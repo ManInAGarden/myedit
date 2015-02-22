@@ -128,7 +128,9 @@ class MyEdit(QMainWindow):
         text.setMarginWidth(0, fontmetrics.width("00000") + 6)
         text.setMarginLineNumbers(0, True)
 
-        text.setEolVisibility(True)
+        text.setMinimumSize(800, 600)
+
+        # text.setEolVisibility(True)
 
         # default seems to be operating system dependent which woul dbe nice
         # text.setEolMode(QsciScintilla.EolMac)
@@ -156,7 +158,9 @@ class MyEdit(QMainWindow):
 
         self.set_curr_file(fname)
 
-
+    """
+    get the lexer by anylzing a file extension
+    """
     def get_lexer_from_ext(self, ext):
         answ = None
         if ext.startswith("."):
@@ -175,10 +179,9 @@ class MyEdit(QMainWindow):
 
     def save_text(self, filename):
         f = open(filename, "w")
-        print(self.text.eolMode())
+
         with f:
-            f.write(self.text.text())
-            self.text.text
+            f.write(self.text.text().replace("\r", ""))
 
         self.set_curr_file(filename)
 
