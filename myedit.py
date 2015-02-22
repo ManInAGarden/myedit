@@ -2,6 +2,7 @@ import sys
 import os.path as path
 from PyQt5.QtWidgets import *
 from PyQt5.Qsci import *
+from PyQt5.QtGui import *
 
 from languagedialog import *
 
@@ -11,12 +12,18 @@ class MyEdit(QMainWindow):
                             "cs": QsciLexerCSharp,
                             "css": QsciLexerCSS,
                             "bat": QsciLexerBatch,
-                            "xml": QsciLexerXML}
+                            "xml": QsciLexerXML,
+                            "js": QsciLexerJavaScript,
+                            "jav": QsciLexerJava,
+                            "sql": Qsci.QsciLexerSQL,
+                            "html": QsciLexerHTML,
+                            "htm": QsciLexerHTML}
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, filename=None):
         super().__init__(parent)
         self.make_gui()
-        self.current_file_name = None
+        self.current_file_name = filename
+        self.loaded()
 
     def make_action(self, name="&ClickMe", shortCut=None, statusTip="Click Me Test Entry", callback=None ):
         action = QAction(name, self)
@@ -56,24 +63,24 @@ class MyEdit(QMainWindow):
                                   statusTip="MyEdit beenden",
                                   callback=qApp.quit))
 
-        editActions = []
-        editActions.append(self.make_action(name="&Einfügen",
+        edit_actions = []
+        edit_actions.append(self.make_action(name="&Einfügen",
                                      statusTip="Text einfügen",
-                                     callback = self.paste,
+                                     callback=self.paste,
                                      shortCut="Ctrl+V"))
 
-        editActions.append(self.make_action(name="&Ausschneiden",
+        edit_actions.append(self.make_action(name="&Ausschneiden",
                                      statusTip="Text ausschneiden",
                                      callback = self.cut,
                                      shortCut="Ctrl+X"))
 
-        editActions.append(self.make_action(name="&Kopieren",
+        edit_actions.append(self.make_action(name="&Kopieren",
                                      statusTip="Text kopieren",
                                      callback = self.copy,
                                      shortCut="Ctrl+C"))
 
-        extraActions = []
-        extraActions.append(self.make_action(name="&Syntaxeinfärbung",
+        extra_actions = []
+        extra_actions.append(self.make_action(name="&Syntaxeinfärbung",
                                              statusTip="Sprache für Syntaxeinfärbung einstellen",
                                              callback=self.set_lexer))
 
@@ -82,14 +89,18 @@ class MyEdit(QMainWindow):
         fileMenu.addActions(fileActions)
         
         editMenu = menubar.addMenu("&Bearbeiten")
-        editMenu.addActions(editActions)
+        editMenu.addActions(edit_actions)
 
         extrasMenu = menubar.addMenu("&Extras")
-        extrasMenu.addActions(extraActions)
+        extrasMenu.addActions(extra_actions)
 
         self.text = QsciScintilla()
         self.setCentralWidget(self.text)
         self.do_text_settings(self.text)
+
+    def loaded(self):
+        if self.current_file_name is not None:
+            self.read_from_file(self.current_file_name)
 
     def do_text_settings(self, text):
         lex = QsciLexerPython()
@@ -97,15 +108,46 @@ class MyEdit(QMainWindow):
         text.setUtf8(True)
         text.setLexer(lex)
 
+        text.setFolding(QsciScintilla.BoxedTreeFoldStyle)
+        # text.setFolding()
+        text.setIndentationWidth(4)
+        text.setIndentationGuides(True)
+        text.setAutoIndent(True)
+        text.setAutoCompletionSource(QsciScintilla.AcsAll);
+        text.setAutoCompletionThreshold(2)
+
+        # brace matching
+        text.setBraceMatching(QsciScintilla.SloppyBraceMatch)
+
+        font = QFont()
+        font.setFamily('Courier')
+        font.setFixedPitch(True)
+        font.setPointSize(10)
+        text.setMarginsFont(font)
+        fontmetrics = QFontMetrics(font)
+        text.setMarginWidth(0, fontmetrics.width("00000") + 6)
+        text.setMarginLineNumbers(0, True)
+
+        text.setEolVisibility(True)
+
+        # default seems to be operating system dependent which woul dbe nice
+        # text.setEolMode(QsciScintilla.EolMac)
+        # print(text.eolMode())
+
+
     def new_file(self):
         self.text.setText("")
 
     def open_file(self):
         fname, whatever = QFileDialog.getOpenFileName(self, 'Datei öffnen', '/home')
+        self.read_from_file(fname)
+
+    def read_from_file(self, fname):
         f = open(fname, 'r')
         with f:
             data = f.read()
             self.text.setText(data)
+            print(self.text.eolMode())
             path_parts = path.splitext(fname)
             if len(path_parts) > 1:
                 lex = self.get_lexer_from_ext(path_parts[1])
@@ -117,8 +159,13 @@ class MyEdit(QMainWindow):
 
     def get_lexer_from_ext(self, ext):
         answ = None
-        if ext in lexer_extension_dict:
-            answ = lexer_extension_dict[ext]()
+        if ext.startswith("."):
+            myext = ext[1:].lower()
+        else:
+            myext = ext.lower()
+
+        if myext in self.lexer_extension_dict:
+            answ = self.lexer_extension_dict[myext]()
 
         return answ
 
@@ -128,9 +175,10 @@ class MyEdit(QMainWindow):
 
     def save_text(self, filename):
         f = open(filename, "w")
-
+        print(self.text.eolMode())
         with f:
             f.write(self.text.text())
+            self.text.text
 
         self.set_curr_file(filename)
 
@@ -163,6 +211,11 @@ class MyEdit(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    scr = MyEdit()
+    if len(sys.argv) > 1:
+        file_name = sys.argv[1]
+    else:
+        file_name = None
+
+    scr = MyEdit(filename=file_name)
     scr.show()
     sys.exit(app.exec_())

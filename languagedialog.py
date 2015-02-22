@@ -51,6 +51,6 @@ class LanguageDialog(QDialog):
             #print(cls)
             if inspect.isclass(value):
                 cls = value
-                if issubclass(cls, Qsci.QsciLexer):
+                if issubclass(cls, Qsci.QsciLexer) and cls.__name__ != "QsciLexer":
                     self.list.addItem(cls.__name__)
 
